@@ -13,19 +13,19 @@ def random_tone_between(A, B):
     if A == '':
         B = A
     if A == '' and B == '':
-        mean = totnote.index('C3')
+        mean = totnote.index('C4')
         sigma = 0
+        A = mean
+        B = mean
     else:
-        A = totnote.index(A)
+        A = totnote.index(A) 
         B = totnote.index(B)
     
-        mean = (A+B)/2
-        sigma = abs(B-A)/2
-    # octave = ['C', 'c', 'D', 'd', 'E', 'F', 'f', 'G', 'g', 'A', 'a', 'B'] 
+    # octave = ['C', 'c', F', 'f', 'G', 'g', 'A', 'a', 'B'] 
     weight = [  2, 0.1,   1, 0.1,   2,   1, 0.1,   2, 0.1,   1.5, 0.1,   2]
     keys = totnote
-    note_weight = dict(zip(keys,[np.exp(-3 * np.abs((n-mean)/(12+sigma))) * weight[(n + 9)%12] for n in range(len(keys))]))
-    note_weight[''] = 0.1
+    note_weight = dict(zip(keys,[np.exp(-3 * (np.abs(n-A) + np.abs(n-B)) / 20) * weight[(n+9)%12] for n in range(len(keys))]))
+    note_weight[''] = 0.5
     keys = list(note_weight.keys())
     note_weight = np.array(list(note_weight.values()))
     note_weight /= sum(note_weight)
@@ -121,12 +121,48 @@ def swap_tone(note_sample):
     note_sample.note[ids[0]] = note_sample.note[ids[1]]
     note_sample.note[ids[1]] = t
 
+def retrograde(note_sample):
+    seg = np.random.choice(3, 1)
+    # retrograde [seg] => [seg+1]
+    L = None
+    M = None
+    R = None
+    for i in range(len(note_sample.note) + 1):
+        if idx2offset(note_sample.dura, i) == seg * 16:
+            L = i
+            continue
+        if idx2offset(note_sample.dura, i) == (seg + 1) * 16:
+            M = i
+            continue
+        if idx2offset(note_sample.dura, i) == (seg + 2) * 16:
+            R = i
+            continue
+    
+    S1 = note_sample.note[:L]
+    S2 = note_sample.note[L:M]
+    S3 = note_sample.note[M:R]
+    S4 = note_sample.note[R:]
+    note_sample.note = S1 + S2 + S2[::-1] +S4
+
+    S1 = note_sample.dura[:L]
+    S2 = note_sample.dura[L:M]
+    S3 = note_sample.dura[M:R]
+    S4 = note_sample.dura[R:]
+    note_sample.dura = S1 + S2 + S2[::-1] +S4
+
+    idx = M
+    L = note_sample.note[idx-1] if idx > 0 else note_sample.note[idx]
+    R = note_sample.note[idx+1] if idx < len(note_sample.note) - 1 else note_sample[idx]
+    note_sample.note[idx] = random_tone_between(L,R)
+
+        
+
 def null(xxx):
     pass
 
 def mutate(note_sample):
     choices = [split_note, merge_note, change_tone, swap_tone, null]
-    p = [0.1, 0.1, 0.2, 0.1, 0.9]
+    p = [0.1, 0.1, 0.2, 0.01, 0.9]
     p = np.array(p)/np.sum(p)
     idx = np.random.choice(range(len(choices)), p = p)
     choices[idx](note_sample)

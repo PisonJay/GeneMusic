@@ -45,22 +45,13 @@ class Fitness:
                 tmp = []
     
     def compute(self, mus):
-        tmp_u = []
-        tmp_s = []
         length = len(mus.note)
         bad_tones = 0
-        for i in range(4):
-            num = 0
-            tmp = []
-            for j in range(length):
-                num += 16 // mus.dura[j]
-                if (mus.note[j]==''):
-                    continue
-                if (num > i*16 and num <= (i+1)*16):
-                    if (tone.count( mus.note[j][0] ) == 0): # 不符合音调的音符数
-                        bad_tones = bad_tones + 16 // mus.dura[j]
-                    for k in range(16 // mus.dura[j]):
-                        tmp.append( note_fre[mus.note[j]] )
+        for j in range(length):
+            if (mus.note[j]==''):
+                continue
+            if (tone.count( mus.note[j][0] ) == 0): # 不符合音调的音符数
+                bad_tones = bad_tones + 1 / mus.dura[j]
         
         res_value = 10 / length
         count_table = np.array([0] * 12)
@@ -92,7 +83,7 @@ class Fitness:
             res_value += np.exp(count_table[i] / length * 2)
         
         # print("fit loss = %f" % (res_value))
-        return res_value
+        return res_value + bad_tones
 
 def GenFitnessFunc(ref_sample):
     return Fitness(ref_sample.note, ref_sample.dura).compute
