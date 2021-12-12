@@ -1,20 +1,36 @@
 from data import sample_dura, sample_note, gen_rhythm
 import random
 import numpy as np
-# from numpy.core.fromnumeric import sort
 import play
-from fitness import GenFitnessFunc
+from fitness import GenFitnessFunc, totnote
 MIN_DURATION = 16
 MAX_N_GENES = 2560
 VALID_DURATION = {1, 2, 4, 8, 16}
 
-def random_tone():
-    note = play.get_random_weight()
-    note_set = list(note.keys())
-    note_wei = np.array(list(note.values()))
-    note_wei /= sum(note_wei)
-    return np.random.choice(note_set, 1, p = note_wei)[0]
-
+def random_tone_between(A, B):
+    if B == '':
+        A = B
+    if A == '':
+        B = A
+    if A == '' and B == '':
+        mean = totnote.index('C3')
+        sigma = 0
+    else:
+        A = totnote.index(A)
+        B = totnote.index(B)
+    
+        mean = (A+B)/2
+        sigma = abs(B-A)/2
+    # octave = ['C', 'c', 'D', 'd', 'E', 'F', 'f', 'G', 'g', 'A', 'a', 'B'] 
+    weight = [  2, 0.1,   1, 0.1,   2,   1, 0.1,   2, 0.1,   1.5, 0.1,   2]
+    keys = totnote
+    note_weight = dict(zip(keys,[np.exp(-3 * np.abs((n-mean)/(12+sigma))) * weight[(n + 9)%12] for n in range(len(keys))]))
+    note_weight[''] = 0.1
+    keys = list(note_weight.keys())
+    note_weight = np.array(list(note_weight.values()))
+    note_weight /= sum(note_weight)
+    return np.random.choice(keys, 1, p = note_weight)[0]
+    
 class NoteSample:
     sort_key = lambda x: x.score
 
@@ -55,7 +71,10 @@ def rand_crossover(par1, par2):
 def split_note(note_sample):
     idx = np.random.choice(range(len(note_sample.note)))
     if note_sample.dura[idx] != 16:
-        note_sample.note.insert(idx, random_tone())
+        cur = note_sample.note[idx]
+        L = note_sample.note[idx-1] if idx > 0 else cur
+        R = cur
+        note_sample.note.insert(idx, random_tone_between(L, R))
         note_sample.dura[idx] *= 2
         note_sample.dura.insert(idx, note_sample.dura[idx])
 
@@ -83,11 +102,18 @@ def merge_note(note_sample):
             del note_sample.note[idx]
             i += 1
         note_sample.dura[idx] = MIN_DURATION//d
-        note_sample.note[idx] = random_tone()
+
+        cur = note_sample.note[idx]
+        L = note_sample.note[idx-1] if idx > 0 else cur
+        R = note_sample.note[idx+1] if idx < len(note_sample.note) - 1 else cur
+        note_sample.note[idx] = random_tone_between(L, R)
 
 def change_tone(note_sample):
     idx = np.random.choice(range(len(note_sample.note)))
-    note_sample.note[idx] = random_tone()
+    cur = note_sample.note[idx]
+    L = note_sample.note[idx-1] if idx > 0 else cur
+    R = note_sample.note[idx+1] if idx < len(note_sample.note) - 1 else cur
+    note_sample.note[idx] = random_tone_between(L, R)
 
 
 def swap_tone(note_sample):
@@ -173,6 +199,7 @@ def genInitialSamples(n):
 
 
 if __name__ == "__main__":
+    print(totnote)
     N_INITIAL_SAMPLES = 600
     samples = genInitialSamples(N_INITIAL_SAMPLES)
     refSample = NoteSample(sample_note[0], sample_dura[0])

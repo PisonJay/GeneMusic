@@ -19,8 +19,7 @@ def get_piano_notes():
     end = np.where(keys == 'C8')[0][0]
     keys = keys[start:end+1]
     global totnote
-    totnote = [x+str(y) for y in range(0,9) for x in octave]
-    print(totnote)
+    totnote = [x+str(y) for y in range(0,9) for x in octave][start:end+1]
     
     note_freqs = dict(zip(keys, [2**((n+1-49)/12)*base_freq for n in range(len(keys))]))
     note_freqs[''] = 0.0 # stop
