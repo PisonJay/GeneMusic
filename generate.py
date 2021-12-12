@@ -1,5 +1,5 @@
 from data import sample_dura, sample_note, gen_rhythm
-import random
+import random, sys
 import numpy as np
 # from numpy.core.fromnumeric import sort
 import play
@@ -89,7 +89,6 @@ def change_tone(note_sample):
     idx = np.random.choice(range(len(note_sample.note)))
     note_sample.note[idx] = random_tone()
 
-
 def swap_tone(note_sample):
     ids = np.random.choice(range(len(note_sample.note)),2, replace=False)
     t = note_sample.note[ids[0]]
@@ -130,10 +129,15 @@ def crossover_n_mutation(note_samples):
 def fitness_filter(note_samples, fitness_func):
     p = []
     for i in note_samples:
-        i.score = 1/( fitness_func(i) + 0.1 )
-        p += [i.score]
+        p += [fitness_func(i)]
     p = np.array(p)
     p /= np.sum(p)
+    p = np.array([np.exp(-_) for _ in p])
+    p /= np.sum(p)
+
+    for (i, x) in zip(note_samples, p):
+        i.score = x
+
     samples = np.random.choice(note_samples, min(len(note_samples), MAX_N_GENES), replace=False, p=p)
     return list(samples)
 
@@ -166,13 +170,8 @@ def genInitialSamples(n):
         ret.append(NoteSample(note[i], dura[i]))
     return ret
 
-
-
-
-
-
-
 if __name__ == "__main__":
+    sys.stdout = open("composition.txt", "w")
     N_INITIAL_SAMPLES = 600
     samples = genInitialSamples(N_INITIAL_SAMPLES)
     refSample = NoteSample(sample_note[0], sample_dura[0])
