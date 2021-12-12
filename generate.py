@@ -130,7 +130,7 @@ def crossover_n_mutation(note_samples):
 def fitness_filter(note_samples, fitness_func):
     p = []
     for i in note_samples:
-        i.score = 1/fitness_func(i)
+        i.score = 1/( fitness_func(i) + 0.1 )
         p += [i.score]
     p = np.array(p)
     p /= np.sum(p)
