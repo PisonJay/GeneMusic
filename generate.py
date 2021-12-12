@@ -118,9 +118,8 @@ def swap_tone(note_sample):
     note_sample.note[ids[0]] = note_sample.note[ids[1]]
     note_sample.note[ids[1]] = t
 
-def retrograde(note_sample):
+def random_split_segs(note_sample):
     seg = np.random.choice(3, 1)
-    # retrograde [seg] => [seg+1]
     L = None
     M = None
     R = None
@@ -134,6 +133,11 @@ def retrograde(note_sample):
         if idx2offset(note_sample.dura, i) == (seg + 2) * 16:
             R = i
             continue
+    return L,M,R
+
+def retrograde(note_sample):
+    # retrograde [seg] => [seg+1]
+    L,M,R = random_split_segs(note_sample)
     
     S1 = note_sample.note[:L]
     S2 = note_sample.note[L:M]
@@ -147,19 +151,79 @@ def retrograde(note_sample):
     S4 = note_sample.dura[R:]
     note_sample.dura = S1 + S2 + S2[::-1] +S4
 
-    idx = M
-    L = note_sample.note[idx-1] if idx > 0 else note_sample.note[idx]
-    R = note_sample.note[idx+1] if idx < len(note_sample.note) - 1 else note_sample[idx]
-    note_sample.note[idx] = random_tone_between(L,R)
+    note_sample.note[M] = random_tone() # don't know if it will make it sound good
+
+def transposition(note_sample):
+    # retrograde [seg] => [seg+1]
+    L,M,R = random_split_segs(note_sample)
+    
+    S1 = note_sample.note[:L]
+    S2 = note_sample.note[L:M]
+    S3 = []
+    S4 = note_sample.note[R:]
+
+    delta = np.random.choice([-8,-1,1,8]) # only transposition in 5' & 2'
+    for i in range(len(S2)):
+        if S2[i] == '':
+            S3.append(S2[i])
+            continue
+        try:
+            S3.append(totnote[totnote.index(S2[i]) + delta])
+        except:
+            return
+
+    note_sample.note = S1 + S2 + S3 +S4
+
+    S1 = note_sample.dura[:L]
+    S2 = note_sample.dura[L:M]
+    # S3 = note_sample.dura[M:R]
+    S4 = note_sample.dura[R:]
+    note_sample.dura = S1 + S2 + S2 +S4
+
+    note_sample.note[M] = random_tone() # don't know if it will make it sound better
+
+def inversion(note_sample):
+    L,M,R = random_split_segs(note_sample)
+    
+    S1 = note_sample.note[:L]
+    S2 = note_sample.note[L:M]
+    S3 = []
+    S4 = note_sample.note[R:]
+
+    horiline = totnote.index(S2[0] if S2[0] != '' else 'E4')
+    for i in range(len(S2)):
+        if S2[i] == '':
+            S3.append(S2[i])
+            continue
+        try:
+            S3.append(totnote[horiline*2 - totnote.index(S2[i])])
+        except:
+            return
+    
+    note_sample.note = S1+S2+S3+S4
+    S1 = note_sample.dura[:L]
+    S2 = note_sample.dura[L:M]
+    # S3 = note_sample.dura[M:R]
+    S4 = note_sample.dura[R:]
+    note_sample.dura = S1 + S2 + S2 +S4
+
+    note_sample.note[M] = random_tone() # don't know if it will make it sound better
+
+
 
         
 
 def null(xxx):
     pass
 
+def segMutate(note_sample):
+    choices = [transposition, inversion, retrograde]
+    idx = np.random.choice(len(choices))
+    choices[idx](note_sample)
+
 def mutate(note_sample):
-    choices = [split_note, merge_note, change_tone, swap_tone, null]
-    p = [0.1, 0.1, 0.2, 0.01, 0.9]
+    choices = [split_note, merge_note, change_tone, swap_tone, null, segMutate]
+    p = [0.1, 0.1, 0.2, 0.1, 0.9, 0.3]
     p = np.array(p)/np.sum(p)
     idx = np.random.choice(range(len(choices)), p = p)
     choices[idx](note_sample)
