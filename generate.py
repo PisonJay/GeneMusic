@@ -6,6 +6,7 @@ from fitness import GenFitnessFunc, totnote
 MIN_DURATION = 16
 MAX_N_GENES = 2560
 VALID_DURATION = {1, 2, 4, 8, 16}
+AGE_LIMIT = 10
 
 def random_tone():
     note = play.get_random_weight()
@@ -46,10 +47,11 @@ class NoteSample:
         self.dura = duration
         self.score = score
         self.generation = generation
+        self.age = 0
         self.id = id
     
     def log(self):
-        print(f'{self.id} @ {self.generation} : {self.score}')
+        print(f'{self.id}-{self.age} @ {self.generation} : {self.score}')
         print(self.note)
         print(self.dura)
 
@@ -223,7 +225,7 @@ def segMutate(note_sample):
 
 def mutate(note_sample):
     choices = [split_note, merge_note, change_tone, swap_tone, null, segMutate]
-    p = [0.1, 0.1, 0.2, 0.1, 0.9, 0.3]
+    p = [0.1, 0.1, 0.2, 0.1, 1.5, 0.1]
     p = np.array(p)/np.sum(p)
     idx = np.random.choice(range(len(choices)), p = p)
     choices[idx](note_sample)
@@ -250,6 +252,14 @@ def crossover_n_mutation(note_samples):
     return buffer
 
 def fitness_filter(note_samples, fitness_func):
+    samples = []
+    for i in note_samples:
+        if i.age > AGE_LIMIT:
+            continue
+        samples.append(i)
+
+    note_samples = samples
+
     p = []
     for i in note_samples:
         p += [fitness_func(i)]
@@ -280,6 +290,7 @@ def GeneticAlgo(note_samples, n_iter, fitness_func, should_log = None):
         samples = crossover_n_mutation(samples)
         for i in range(len(samples)):
             samples[i].generation = iter + 1
+            samples[i].age += 1
             samples[i].id = i
 
         if should_log(iter):
@@ -298,4 +309,4 @@ if __name__ == "__main__":
     N_INITIAL_SAMPLES = 600
     samples = genInitialSamples(N_INITIAL_SAMPLES)
     refSample = NoteSample(sample_note[0], sample_dura[0])
-    GeneticAlgo(samples, 21, fitness_func=GenFitnessFunc(refSample))
+    GeneticAlgo(samples, 31, fitness_func=GenFitnessFunc(refSample))
